@@ -12,7 +12,6 @@ Run this script to verify the inbox scanning implementation works correctly.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from colorama import Fore, Style, init  # type: ignore[import-untyped]
 from dotenv import load_dotenv  # type: ignore[import-untyped]
@@ -202,7 +201,7 @@ def main() -> int:
 
         print_info("Acquiring access token...")
         # This will use cached token or acquire a new one
-        token = auth_manager.get_access_token()
+        _ = auth_manager.get_access_token()
         print_success("Access token acquired")
     except Exception as e:
         print_error(f"Authentication failed: {e}")
