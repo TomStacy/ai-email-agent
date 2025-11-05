@@ -5,88 +5,76 @@ from __future__ import annotations
 import json
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import requests  # type: ignore[import]
 from dotenv import load_dotenv  # type: ignore[import]
-from msal import PublicClientApplication  # type: ignore[import]
+from msal import (  # type: ignore[import]
+    ConfidentialClientApplication,
+    PublicClientApplication,
+    SerializableTokenCache,
+)
 
-CACHE_PATH = Path("data/cache/msal_device_cache.json")
-
-
-@dataclass(frozen=True, slots=True)
-class AuthSettings:
-    client_id: str
-    authority: str
-    scopes: tuple[str, ...]
-    graph_endpoint: str
-
-
-def load_settings() -> AuthSettings:
-    load_dotenv()
-    required_keys = ["AZURE_CLIENT_ID", "AZURE_TENANT_ID"]
-    missing = [key for key in required_keys if not _get_env(key)]
-    if missing:
-        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
-
-    authority = _get_env("AZURE_AUTHORITY") or (
-        f"https://login.microsoftonline.com/{_get_env('AZURE_TENANT_ID')}"
-    )
-    scopes_raw = _get_env("AZURE_SCOPE") or "User.Read"
-    scopes = tuple(scope.strip() for scope in scopes_raw.split() if scope.strip())
-    endpoint = _get_env("GRAPH_API_ENDPOINT") or "https://graph.microsoft.com/v1.0"
-
-    return AuthSettings(
-        client_id=_get_env("AZURE_CLIENT_ID"),
-        authority=authority,
-        scopes=scopes,
-        graph_endpoint=endpoint,
-    )
+try:
+    from src.auth.config import AuthConfig
+except ImportError:
+    # Fallback for running script directly
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from src.auth.config import AuthConfig
 
 
-def _get_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    return value
+def build_client(config: AuthConfig) -> tuple[PublicClientApplication | ConfidentialClientApplication, SerializableTokenCache]:
+    if config.cache_path:
+        config.cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create a serializable token cache
+    cache = SerializableTokenCache()
+
+    # Load existing cache if available
+    if config.cache_path and config.cache_path.exists():
+        cache_data = config.cache_path.read_text(encoding="utf-8")
+        if cache_data:
+            cache.deserialize(cache_data)
+
+    if config.client_secret:
+        app = ConfidentialClientApplication(
+            client_id=config.client_id,
+            client_credential=config.client_secret,
+            authority=config.authority,
+            token_cache=cache,
+        )
+    else:
+        app = PublicClientApplication(
+            client_id=config.client_id,
+            authority=config.authority,
+            token_cache=cache,
+        )
+
+    return app, cache
 
 
-def build_client(settings: AuthSettings) -> PublicClientApplication:
-    CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    cache_state = CACHE_PATH.read_text(encoding="utf-8") if CACHE_PATH.exists() else ""
-
-    app = PublicClientApplication(
-        client_id=settings.client_id,
-        authority=settings.authority,
-    )
-
-    deserialize = getattr(app.token_cache, "deserialize", None)
-    if cache_state and callable(deserialize):
-        deserialize(cache_state)
-
-    return app
+def persist_cache(cache: SerializableTokenCache, cache_path: Path | None) -> None:
+    if cache.has_state_changed and cache_path:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_data = cache.serialize()
+        cache_path.write_text(cache_data, encoding="utf-8")
 
 
-def persist_cache(app: PublicClientApplication) -> None:
-    serialize = getattr(app.token_cache, "serialize", None)
-    if not callable(serialize):
-        return
-    cache_state = cast(str, serialize())
-    if cache_state:
-        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        existing_state = CACHE_PATH.read_text(encoding="utf-8") if CACHE_PATH.exists() else ""
-        if cache_state != existing_state:
-            CACHE_PATH.write_text(cache_state, encoding="utf-8")
-    elif CACHE_PATH.exists():
-        CACHE_PATH.unlink()
-
-
-def acquire_token(app: PublicClientApplication, scopes: tuple[str, ...]) -> dict[str, Any]:
+def acquire_token(app: PublicClientApplication | ConfidentialClientApplication, scopes: tuple[str, ...]) -> dict[str, Any]:
     accounts = app.get_accounts()
     if accounts:
         result = app.acquire_token_silent(scopes=list(scopes), account=accounts[0])
         if result and "access_token" in result:
             return result
+
+    # ConfidentialClientApplication doesn't support device code flow
+    if isinstance(app, ConfidentialClientApplication):
+        raise RuntimeError(
+            "Interactive device code flow requires a public client. "
+            "Please remove AZURE_CLIENT_SECRET from .env, or configure your Azure app as a public client: "
+            "Azure Portal → App Registrations → Authentication → Allow public client flows = Yes"
+        )
 
     flow = app.initiate_device_flow(scopes=list(scopes))
     if "user_code" not in flow:
@@ -112,20 +100,24 @@ def call_graph(endpoint: str, token: str) -> dict[str, Any]:
 
 
 def main() -> int:
+    load_dotenv()
+
     try:
-        settings = load_settings()
-    except RuntimeError as exc:  # pragma: no cover - interactive script guard
+        config = AuthConfig.from_env()
+    except Exception as exc:  # pragma: no cover - interactive script guard
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 1
 
-    app = build_client(settings)
+    graph_endpoint = os.environ.get("GRAPH_API_ENDPOINT", "https://graph.microsoft.com/v1.0")
+
+    app, cache = build_client(config)
     try:
-        result = acquire_token(app, settings.scopes)
+        result = acquire_token(app, config.scopes)
     except Exception as exc:  # pragma: no cover - interactive script guard
         print(f"Authentication failed: {exc}", file=sys.stderr)
         return 1
     finally:
-        persist_cache(app)
+        persist_cache(cache, config.cache_path)
 
     if "access_token" not in result:
         print("Failed to obtain access token.", file=sys.stderr)
@@ -134,7 +126,7 @@ def main() -> int:
 
     print("Authentication successful. Access token acquired.")
     try:
-        profile = call_graph(settings.graph_endpoint, result["access_token"])
+        profile = call_graph(graph_endpoint, result["access_token"])
     except Exception as exc:  # pragma: no cover - runtime external call
         print(f"Unable to query Microsoft Graph: {exc}", file=sys.stderr)
         return 0

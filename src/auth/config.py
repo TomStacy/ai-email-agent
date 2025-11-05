@@ -9,8 +9,11 @@ from pathlib import Path
 
 from .exceptions import ConfigurationError
 
+# Get the project root directory (two levels up from this file)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+
 DEFAULT_SCOPE = "https://graph.microsoft.com/.default"
-DEFAULT_CACHE_PATH = Path("data/cache/msal_token_cache.json")
+DEFAULT_CACHE_PATH = _PROJECT_ROOT / "data" / "cache" / "msal_device_cache.json"
 DEFAULT_AUTHORITY_TEMPLATE = "https://login.microsoftonline.com/{tenant_id}"
 
 
@@ -20,7 +23,7 @@ class AuthConfig:
 
     tenant_id: str
     client_id: str
-    client_secret: str
+    client_secret: str | None
     authority: str
     scopes: tuple[str, ...] = field(default_factory=lambda: (DEFAULT_SCOPE,))
     cache_path: Path | None = DEFAULT_CACHE_PATH
@@ -31,27 +34,27 @@ class AuthConfig:
         """Create a configuration instance using environment variables."""
 
         source = env or os.environ
-        tenant_id = _get_required(source, "MSAL_TENANT_ID")
-        client_id = _get_required(source, "MSAL_CLIENT_ID")
-        client_secret = _get_required(source, "MSAL_CLIENT_SECRET")
+        tenant_id = _get_required(source, "AZURE_TENANT_ID")
+        client_id = _get_required(source, "AZURE_CLIENT_ID")
+        client_secret = source.get("AZURE_CLIENT_SECRET", "").strip() or None
 
-        authority = source.get("MSAL_AUTHORITY")
+        authority = source.get("AZURE_AUTHORITY")
         if not authority:
             authority = DEFAULT_AUTHORITY_TEMPLATE.format(tenant_id=tenant_id)
 
-        scopes_raw = source.get("MSAL_SCOPES") or DEFAULT_SCOPE
+        scopes_raw = source.get("AZURE_SCOPE") or DEFAULT_SCOPE
         scopes = tuple(_normalize_scopes(scopes_raw))
         if not scopes:
-            raise ConfigurationError("MSAL_SCOPES cannot be empty")
+            raise ConfigurationError("AZURE_SCOPE cannot be empty")
 
-        cache_path_value = source.get("MSAL_CACHE_PATH")
+        cache_path_value = source.get("AZURE_CACHE_PATH")
         cache_path = (
             Path(cache_path_value).expanduser() if cache_path_value else DEFAULT_CACHE_PATH
         )
         if cache_path:
             cache_path = cache_path.resolve()
 
-        timeout_value = source.get("MSAL_HTTP_TIMEOUT")
+        timeout_value = source.get("AZURE_HTTP_TIMEOUT")
         timeout = float(timeout_value) if timeout_value else 10.0
 
         return cls(

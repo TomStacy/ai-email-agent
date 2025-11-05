@@ -21,6 +21,7 @@ wheels/
 *.egg
 
 # Virtual Environment
+.venv/
 venv/
 env/
 ENV/
@@ -37,8 +38,14 @@ venv.bak/
 
 # Environment variables
 .env
+.env.*
 .env.local
 .env.*.local
+*.env
+config.json
+config.local.json
+secrets.json
+credentials.json
 
 # Testing
 .pytest_cache/
@@ -53,9 +60,17 @@ data/logs/*
 !data/logs/.gitkeep
 *.log
 
-# Token cache
+# Ruff
+.ruff_cache/
+.ruff-cache/
+
+# MSAL Token cache (sensitive!)
 token_cache.bin
 .msal_token_cache
+msal_token_cache.json
+msal_device_cache.json
+**/msal_*.json
+**/token_cache.*
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -75,3 +90,35 @@ dmypy.json
 *.bak
 *.swp
 *~.nib
+*.cache
+.temp/
+temp/
+tmp/
+*.pid
+*.seed
+*.pid.lock
+
+# UV specific
+.uv/
+uv.lock
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Email data (potentially sensitive)
+*.eml
+*.msg
+emails/
+email_data/
+
+# Backup files
+*.backup
+*_backup
+backup/

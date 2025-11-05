@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from msal import ConfidentialClientApplication  # type: ignore[import]
+from msal import ConfidentialClientApplication, PublicClientApplication  # type: ignore[import]
 
 from .config import AuthConfig
 from .exceptions import AuthenticationError
@@ -19,16 +19,28 @@ class AuthenticationManager:
         self,
         config: AuthConfig,
         cache_manager: TokenCacheManager | None = None,
-        client: ConfidentialClientApplication | None = None,
+        client: ConfidentialClientApplication | PublicClientApplication | None = None,
     ) -> None:
         self._config = config
         self._cache_manager = cache_manager or TokenCacheManager(config.cache_path)
-        self._client = client or ConfidentialClientApplication(
-            client_id=config.client_id,
-            client_credential=config.client_secret,
-            authority=config.authority,
-            token_cache=self._cache_manager.cache,
-        )
+
+        if client:
+            self._client = client
+        elif config.client_secret:
+            # Use confidential client for app-only authentication
+            self._client = ConfidentialClientApplication(
+                client_id=config.client_id,
+                client_credential=config.client_secret,
+                authority=config.authority,
+                token_cache=self._cache_manager.cache,
+            )
+        else:
+            # Use public client for delegated authentication
+            self._client = PublicClientApplication(
+                client_id=config.client_id,
+                authority=config.authority,
+                token_cache=self._cache_manager.cache,
+            )
 
     @property
     def config(self) -> AuthConfig:
@@ -92,16 +104,29 @@ class AuthenticationManager:
 
         target_scopes = list(scopes or self._config.scopes)
         result: Mapping[str, Any] | None = None
+
+        # Try to get token from cache first
         if not force_refresh:
-            result = self._client.acquire_token_silent(
-                scopes=target_scopes,
-                account=None,
-            )
-        if not result:
-            result = self._client.acquire_token_for_client(
-                scopes=target_scopes,
-                force_refresh=force_refresh,
-            )
+            accounts = self._client.get_accounts()
+            if accounts:
+                result = self._client.acquire_token_silent(
+                    scopes=target_scopes,
+                    account=accounts[0],
+                )
+
+        # If no cached token, acquire a new one
+        if not result or "access_token" not in result:
+            if isinstance(self._client, ConfidentialClientApplication):
+                # App-only flow (client credentials)
+                result = self._client.acquire_token_for_client(
+                    scopes=target_scopes,
+                )
+            else:
+                # Delegated flow - need interactive authentication
+                raise AuthenticationError(
+                    "No cached token available. Please run scripts/interactive_login.py first to authenticate."
+                )
+
         if not result or "access_token" not in result:
             error = result.get("error") if isinstance(result, Mapping) else None
             description = result.get("error_description") if isinstance(result, Mapping) else None
@@ -121,6 +146,12 @@ class AuthenticationManager:
         scopes: Sequence[str],
     ) -> Mapping[str, Any]:
         """Acquire a token using the on-behalf-of flow."""
+
+        if not isinstance(self._client, ConfidentialClientApplication):
+            raise AuthenticationError(
+                "On-behalf-of flow requires a confidential client application. "
+                "Please configure AZURE_CLIENT_SECRET in your .env file."
+            )
 
         result = self._client.acquire_token_on_behalf_of(
             user_assertion=user_assertion,
