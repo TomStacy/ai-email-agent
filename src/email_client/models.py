@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -105,21 +106,17 @@ class Email:
         # Parse datetimes
         received_datetime = None
         if data.get("receivedDateTime"):
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 received_datetime = datetime.fromisoformat(
                     str(data["receivedDateTime"]).replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError):
-                pass
 
         sent_datetime = None
         if data.get("sentDateTime"):
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 sent_datetime = datetime.fromisoformat(
                     str(data["sentDateTime"]).replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError):
-                pass
 
         return cls(
             id=str(data["id"]),
