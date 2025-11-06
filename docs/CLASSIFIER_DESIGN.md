@@ -170,12 +170,10 @@ categories:
    - Flag conflicts for user review
 
 6. **Category Folders**
-
-  - Create category folders using the graph API to move emails to appropriate folder
+    - Create category folders using the graph API to move emails to appropriate folder
 
 7. **Mark as read**
-
-  - applies to certain categories
+    - applies to certain categories
 
 ### Classification Workflow Pseudocode
 
@@ -211,7 +209,7 @@ function classify_email(email):
 ## LLM selection
 
 - Should be configurable using the OpenAI Python library
-- Local models (perhpas leveraging Olama) should be an MVP feature
+- Local models leveraging Olama should be a phase 1 MVP feature, assume Olama is installed and configured
 - Perhpas fine tuning somewhare down the road
 
 ## Performance & Cost Considerations
@@ -351,7 +349,7 @@ ClassificationResult:
 - **Analytics**: Track classification accuracy over time
 - **Audit trail**: For compliance/review
 
-### Should there be a local DB/Vector DB Store?
+### Use SQLite for data storage initially
 
 ---
 
@@ -444,6 +442,7 @@ Optimized payload to minimize tokens while maximizing signal:
 ### Prompt Structure Options
 
 #### Option A: Single Category (Simplest)
+
 ```
 "Classify this email into exactly one category from this list:
 [important, solicitation, newsletter, transactional, normal]
@@ -460,6 +459,7 @@ Respond with just the category name."
 **Cons**: Loses nuance, can't handle multi-faceted emails
 
 #### Option B: Multi-tag (Flexible)
+
 ```
 "Tag this email with all applicable categories from this list:
 [list of all categories]
@@ -473,6 +473,7 @@ Respond with comma-separated categories."
 **Cons**: Harder to use for automation, need primary category
 
 #### Option C: Structured Response (Comprehensive)
+
 ```
 "Analyze this email and provide:
 1. Primary category: [one of: list]
@@ -651,7 +652,9 @@ The decisions above provide strategic direction, but several implementation deta
 
 **Issue**: Decision #5 says "For the MVP, let's require AI" but the LLM section says "Local models (perhaps leveraging Ollama) should be an MVP feature"
 
-**Question**: Is Ollama (local LLM) support part of MVP or deferred to Phase 2?
+**Question**: Is Ollama (local LLM) support part of MVP or deferred to Phase 2? 
+
+**Answer**: Assume Ollama is installed and configure, Olama provides an OpenAPI compatable API, it should be part of Phase 1
 
 **Considerations**:
 - Option A: OpenAI only (simpler, faster to implement, ~2-3 days)
@@ -662,8 +665,10 @@ The decisions above provide strategic direction, but several implementation deta
 **Impact on Timeline**: Adding Ollama to MVP could extend Weeks 3-4 timeline
 
 **Recommendation**:
-- MVP: OpenAI API only (configurable model: GPT-3.5-turbo, GPT-4)
-- Phase 2: Add Ollama support for privacy-focused users
+
+- 11/5/2025 - Any OPENAI API compatable LLM should be available via configuration of a URL and model name
+- ~~MVP: OpenAI API only (configurable model: GPT-3.5-turbo, GPT-4)~~
+- ~~Phase 2: Add Ollama support for privacy-focused users~~
 
 ---
 
@@ -1024,7 +1029,7 @@ To keep MVP focused and achievable in Weeks 3-4:
 - Hybrid approach (primary category + secondary tags)
 - VIP sender list (YAML config)
 - Basic rule-based classification (keyword matching, sender patterns)
-- OpenAI API integration (configurable model: GPT-3.5-turbo or GPT-4)
+- Any OPENAI API compatable LLM should be available via configuration of a URL and model name
 - Structured AI prompts (Option C: JSON response with reasoning)
 - SQLite for classification history
 - JSON file for user feedback logging
