@@ -678,6 +678,8 @@ The decisions above provide strategic direction, but several implementation deta
 
 **Question**: Is auto-rule generation part of MVP (Weeks 3-4) or Phase 2?
 
+**Answer**: Move to Phase 2
+
 **Complexity Levels**:
 - **Simple** (MVP candidate): "User always marks emails from sender@example.com as junk → add to blocklist"
 - **Moderate** (Phase 2): "Pattern detected: emails with subject containing 'newsletter' from domain *.substack.com → auto-categorize as newsletter"
@@ -700,6 +702,8 @@ The decisions above provide strategic direction, but several implementation deta
 **Issue**: Decision flow step #6 mentions "Create category folders using the graph API to move emails to appropriate folder"
 
 **Question**: Should MVP create category folders automatically, or just classify emails in place?
+
+**Answer**: For MVP, just classify emails in place
 
 **Detailed Specifications Needed**:
 
@@ -762,6 +766,8 @@ Option C - Configurable root:
 
 **Question**: Which categories should auto-mark as read? What are the rules?
 
+**Answer**: Let's move this to Phase 2
+
 **Detailed Specifications Needed**:
 
 **Which Categories**:
@@ -794,6 +800,8 @@ Option C - Configurable root:
 **Issue**: Decisions require learning from feedback, but no storage format defined
 
 **Question**: What database/storage format for classification history and user feedback?
+
+**Answer**:  Use SQLite for MVP
 
 **Options**:
 - **JSON files** (simple, no dependencies, good for MVP)
