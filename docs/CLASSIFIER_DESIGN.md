@@ -19,18 +19,21 @@ This document outlines the design and strategy for the Email Classification modu
 A layered approach provides the best balance of speed, cost, and accuracy:
 
 **Tier 1: Fast Rule-Based Pre-filtering** (runs first, cheapest)
+
 - Whitelist/VIP senders → instant "important" classification
 - Known spam domains → instant "junk"
 - Obvious patterns (unsubscribe links, marketing keywords)
 - Sender domain matching
 
 **Tier 2: AI Classification** (runs on uncertain emails)
+
 - More nuanced understanding
 - Context-aware categorization
 - Handles edge cases and new patterns
 - Can detect tone, urgency, intent
 
 **Tier 3: User Feedback Loop** (optional future enhancement)
+
 - Learn from user corrections
 - Adjust confidence thresholds
 - Build personalized rules over time
@@ -70,10 +73,15 @@ A layered approach provides the best balance of speed, cost, and accuracy:
 **Question**: Should we use hierarchical categories (e.g., `solicitation.cold_outreach` vs `solicitation.newsletter`) or flat categories with tags?
 
 **Considerations**:
+
 - Hierarchical: More organized, allows category inheritance, complex to configure
 - Flat with tags: Simpler, more flexible, allows multiple categories per email
 - Hybrid: Primary category + secondary tags
 
+✅ **DECISION**: Should use Hybrid
+     - Rationale: provides the most value
+     - Date: 2025-11-05
+     - Status: Approved
 ---
 
 ## Configuration-Driven Design
@@ -101,6 +109,7 @@ Monitored (watch for patterns)
 ### Category Rules Configuration
 
 Each category could have:
+
 - **Keywords** (subject, body, sender)
 - **Sender patterns** (domains, email formats)
 - **Header checks** (reply-to, list-unsubscribe)
@@ -109,6 +118,7 @@ Each category could have:
 - **Confidence threshold** (how sure to be before applying)
 
 Example:
+
 ```yaml
 categories:
   finance:
@@ -133,7 +143,7 @@ categories:
 
 ## Hybrid Classification Logic
 
-### Decision Flow
+### Decision Flow - This is good
 
 1. **Check VIP list first**
    - If sender is VIP → classify as important, skip AI
@@ -158,6 +168,14 @@ categories:
    - Weight rule-based and AI scores
    - Use AI reasoning to override rules if strongly confident
    - Flag conflicts for user review
+
+6. **Category Folders**
+
+  - Create category folders using the graph API to move emails to appropriate folder
+
+7. **Mark as read**
+
+  - applies to certain categories
 
 ### Classification Workflow Pseudocode
 
@@ -190,6 +208,12 @@ function classify_email(email):
 
 ---
 
+## LLM selection
+
+- Should be configurable using the OpenAI Python library
+- Local models (perhpas leveraging Olama) should be an MVP feature
+- Perhpas fine tuning somewhare down the road
+
 ## Performance & Cost Considerations
 
 ### Token Optimization
@@ -197,6 +221,7 @@ function classify_email(email):
 **Challenge**: Sending full emails to AI is expensive
 
 **Solutions**:
+
 - Don't send full email body to AI (too expensive)
 - Send: subject + first 500 chars of body + sender + basic metadata
 - Cache classifications by sender domain
@@ -212,12 +237,14 @@ Accuracy tradeoff: Minimal (most classification signals in first paragraph)
 ### Caching Strategy
 
 **Domain-level caching**:
+
 - "All emails from newsletter@company.com are newsletters"
 - User confirms once → cache for future
 - TTL on cache (30 days? 90 days?)
 - Invalidate on user correction
 
 **Sender pattern caching**:
+
 - Learn that "noreply@*.com" is typically automated
 - Cache common patterns
 - Reduce AI calls by 60-80%
@@ -225,6 +252,7 @@ Accuracy tradeoff: Minimal (most classification signals in first paragraph)
 ### Rate Limiting
 
 **API Call Management**:
+
 - Limit AI calls per scan (e.g., max 50 per session)
 - Process rules-based first
 - Queue uncertain emails for AI processing
@@ -232,6 +260,7 @@ Accuracy tradeoff: Minimal (most classification signals in first paragraph)
 - Fallback to rule-based if quota exceeded
 
 **Cost Controls**:
+
 - Track OpenAI API usage
 - Set daily/monthly limits
 - Warn user when approaching limits
@@ -244,18 +273,22 @@ Accuracy tradeoff: Minimal (most classification signals in first paragraph)
 ### What Should Users Be Able to Configure?
 
 #### VIP/Important Senders
+
 - Email addresses (exact match)
 - Domains (pattern match)
 - Name patterns (regex support)
 - Per-sender custom categories
+- LLM (primary and secondary)
 
 #### Category Preferences
+
 - Which categories to use
 - Custom category definitions
 - Category-specific keywords
 - Enable/disable specific categories
 
 #### Classification Behavior
+
 - **Aggressiveness** (conservative vs aggressive filtering)
 - **Confidence thresholds** (per category)
 - **AI usage** (always, never, hybrid)
@@ -263,6 +296,7 @@ Accuracy tradeoff: Minimal (most classification signals in first paragraph)
 - **Auto-apply actions** based on category
 
 #### Blocked/Junk Criteria
+
 - Sender blacklist
 - Domain blacklist
 - Keyword blacklist
@@ -271,16 +305,19 @@ Accuracy tradeoff: Minimal (most classification signals in first paragraph)
 ### Configuration Levels
 
 **Level 1: Beginner (Minimal Setup)**
+
 - Just VIP sender list
 - Use default categories and rules
 - AI enabled by default
 
 **Level 2: Intermediate**
+
 - Custom category keywords
 - Adjust confidence thresholds
 - Basic sender rules
 
 **Level 3: Advanced (Power User)**
+
 - Full rules engine
 - Custom categories
 - Complex pattern matching
@@ -314,13 +351,15 @@ ClassificationResult:
 - **Analytics**: Track classification accuracy over time
 - **Audit trail**: For compliance/review
 
+### Should there be a local DB/Vector DB Store?
+
 ---
 
 ## Special Cases to Handle
 
 ### Email Threads
 
-**Challenge**: Should all emails in a thread have same category?
+**Challenge**: Should all emails in a thread have same category? 
 
 **Approaches**:
 1. **Thread inheritance**: First email sets category for entire thread
@@ -336,11 +375,13 @@ ClassificationResult:
 **Challenge**: Distinguish legitimate automated emails from spam
 
 **Indicators of legitimate automated**:
+
 - Receipts vs marketing dressed as receipts
 - Legitimate notifications vs notification spam
 - Transactional emails from known services
 
 **Detection strategies**:
+
 - Check sender domain reputation
 - Look for transaction IDs, order numbers
 - Verify "from" matches "reply-to"
@@ -351,12 +392,14 @@ ClassificationResult:
 **Challenge**: Subscribed newsletters (wanted) vs cold email lists (unwanted)
 
 **Distinction criteria**:
+
 - Has unsubscribe link that works
 - User has opened previous emails from sender
 - Consistent sending schedule
 - Content quality (newsletter vs pure marketing)
 
 **Approach**:
+
 - Allow user to mark specific newsletters as "wanted"
 - Build whitelist of trusted newsletter domains
 - AI can detect content quality difference
@@ -366,13 +409,15 @@ ClassificationResult:
 **Challenge**: Does AI handle non-English well enough?
 
 **Considerations**:
+
 - GPT-4 handles major languages well
 - Rule-based keywords need translation
 - Some languages might need language-specific rules
 
 **Approach**:
+
 - Start with English
-- Add language detection
+- Add language detection (Future)
 - Use AI for non-English (better than translated rules)
 - Allow users to add language-specific keywords
 
@@ -481,6 +526,7 @@ Now classify this email: [actual email]
 ### Phase 1: MVP (Weeks 3-4)
 
 **Core Categories**:
+
 - `important`
 - `solicitation`
 - `newsletter`
@@ -488,6 +534,7 @@ Now classify this email: [actual email]
 - `normal`
 
 **Features**:
+
 - Simple VIP sender list (config file)
 - Basic rule-based classification (keywords + sender patterns)
 - AI classification for uncertain cases (confidence < 0.9)
@@ -495,6 +542,7 @@ Now classify this email: [actual email]
 - Clear logging of classification decisions
 
 **Configuration**:
+
 - YAML file for VIP senders
 - JSON file for category rules
 - Enable/disable AI via env variable
@@ -504,12 +552,14 @@ Now classify this email: [actual email]
 ### Phase 2: Enhancement (Week 5-6)
 
 **Additional Categories**:
+
 - `finance`
 - `work`
 - `tech`
 - `personal`
 
 **Features**:
+
 - User feedback mechanism
 - Classification result caching
 - Sender domain caching
@@ -517,6 +567,7 @@ Now classify this email: [actual email]
 - Multi-tag support
 
 **Improvements**:
+
 - Optimize AI prompts based on Phase 1 learnings
 - Reduce token usage
 - Improve confidence scoring algorithm
@@ -524,6 +575,7 @@ Now classify this email: [actual email]
 ### Phase 3: Advanced Features (Future)
 
 **Features**:
+
 - Machine learning from user feedback
 - Automatic rule generation from patterns
 - Thread-aware classification
@@ -537,20 +589,52 @@ Now classify this email: [actual email]
 ## Open Questions for Decision
 
 1. **Scope**: Start with just solicitation detection (original plan) and expand later? Or build full classification system (5 categories) now?
+   ✅ **DECISION**: Build full classification system (5 categories)
+     - Rationale: More user value, better testing
+     - Date: 2025-11-05
+     - Status: Approved
 
 2. **Category Set**: Small focused set (5-7 categories) or comprehensive (15-20)?
+  ✅ **DECISION**: Start with 5, expand to 10 in Phase 2
+     - Rationale: Balance of simplicity and functionality
+     - Date: 2025-11-05
+     - Status: Approved
 
 3. **User Experience**: How much configuration expected? Simple (just VIP list) or power-user (full rules engine)?
+  ✅ **DECISION**: Start VIP list, but architect to expand to power user
+     - Rationale: The VIP list might be enough, and it's not clear what additional would be needed for a power-user
+     - Date: 2025-11-05
+     - Status: Approved
 
 4. **AI Dependency**: Should system work fully without AI (rules-only mode) or is AI required?
+  ✅ **DECISION**: AI is required but should be coupled with the rules engine. LLM models should be configurable using the OpenAI library
+     - Rationale: AI provides that value that existing rull based systems can't match
+     - Date: 2025-11-05
+     - Status: Approved
 
 5. **Privacy**: Some users won't want to send email data to OpenAI. Should rule-based be a full alternative?
+  ✅ **DECISION**: A rules based engine or an LLM running locally should be options. For the MVP, let's require AI 
+     - Rationale: AI provides that value that existing rull based systems can't match
+     - Date: 2025-11-05
+     - Status: Approved
 
 6. **Learning**: Want system to learn from user feedback and auto-generate rules, or keep it static/manual configuration?
+  ✅ **DECISION**: The system should learn from user feedback and auto-generate rules 
+     - Rationale: This is a core value prop
+     - Date: 2025-11-05
+     - Status: Approved
 
 7. **Multi-category**: Support multiple categories per email (tags) or force single category?
+  ✅ **DECISION**: The system should support multiple categories 
+     - Rationale: Increased flesibility
+     - Date: 2025-11-05
+     - Status: Approved
 
 8. **Thread handling**: Classify emails individually or consider thread context?
+  ✅ **DECISION**: Thread context should be considered 
+     - Rationale: If a user replies to an email, that should increase the importance of the email
+     - Date: 2025-11-05
+     - Status: Approved
 
 ---
 
