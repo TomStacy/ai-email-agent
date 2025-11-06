@@ -638,6 +638,421 @@ Now classify this email: [actual email]
 
 ---
 
+## Implementation Questions
+
+**Status**: Pending Review
+**Purpose**: Clarifications needed before implementation begins
+
+The decisions above provide strategic direction, but several implementation details need clarification to ensure a successful MVP.
+
+### A. MVP Scope Clarification
+
+#### 1. Local LLM Support (Ollama)
+
+**Issue**: Decision #5 says "For the MVP, let's require AI" but the LLM section says "Local models (perhaps leveraging Ollama) should be an MVP feature"
+
+**Question**: Is Ollama (local LLM) support part of MVP or deferred to Phase 2?
+
+**Considerations**:
+- Option A: OpenAI only (simpler, faster to implement, ~2-3 days)
+- Option B: OpenAI + Ollama support (more privacy, more complexity, ~5-7 days)
+- Ollama requires additional dependencies and testing
+- Local models may have lower accuracy than GPT-4
+
+**Impact on Timeline**: Adding Ollama to MVP could extend Weeks 3-4 timeline
+
+**Recommendation**:
+- MVP: OpenAI API only (configurable model: GPT-3.5-turbo, GPT-4)
+- Phase 2: Add Ollama support for privacy-focused users
+
+---
+
+#### 2. Auto-Generated Rules from Feedback
+
+**Issue**: Decision #6 says "system should learn from user feedback and auto-generate rules" - this is quite ambitious for MVP
+
+**Question**: Is auto-rule generation part of MVP (Weeks 3-4) or Phase 2?
+
+**Complexity Levels**:
+- **Simple** (MVP candidate): "User always marks emails from sender@example.com as junk → add to blocklist"
+- **Moderate** (Phase 2): "Pattern detected: emails with subject containing 'newsletter' from domain *.substack.com → auto-categorize as newsletter"
+- **Complex** (Phase 3): ML-based pattern recognition and rule synthesis
+
+**Related Questions**:
+- Should users approve auto-generated rules before they apply?
+- What's the confidence threshold for auto-generated rules?
+- How many user corrections needed before generating a rule? (3? 5? 10?)
+
+**Recommendation**:
+- MVP: Manual user corrections update cached classifications only (no rule generation)
+- Phase 2: Simple sender-based auto-rules (requires approval)
+- Phase 3: Pattern-based rule generation with ML
+
+---
+
+#### 3. Category Folders - Auto-Creation
+
+**Issue**: Decision flow step #6 mentions "Create category folders using the graph API to move emails to appropriate folder"
+
+**Question**: Should MVP create category folders automatically, or just classify emails in place?
+
+**Detailed Specifications Needed**:
+
+**Folder Structure**: What layout?
+```
+Option A - Flat under Inbox:
+Inbox/
+  AI-Important/
+  AI-Solicitation/
+  AI-Newsletter/
+  ...
+
+Option B - Nested hierarchy:
+Inbox/
+  AI-Agent/
+    Important/
+    Solicitation/
+    Newsletter/
+    Finance/
+    ...
+
+Option C - Configurable root:
+{USER_CONFIGURED_ROOT}/
+  Important/
+  Solicitation/
+  ...
+```
+
+**Folder Naming**:
+- Prefix with "AI-Agent" or emoji? (e.g., "📧 Solicitation")
+- Allow user customization of folder names?
+
+**Creation Timing**:
+- On first classification of that category?
+- On app startup (create all category folders)?
+- User-triggered setup command?
+
+**Multi-Category Handling**:
+- If email has primary=`important` + secondary=`finance`, which folder?
+- Always use primary category for folder placement?
+
+**Existing Folders**:
+- Check if folder exists before creating?
+- What if user has existing folder with same name?
+
+**User Control**:
+- Should users be able to disable auto-folder creation?
+- Option to classify-only without moving emails?
+
+**Recommendation for MVP**:
+- Classify emails but DO NOT auto-move (classify-only mode)
+- Provide classification results and let user decide on actions
+- Phase 2: Add optional auto-folder creation with configuration
+
+---
+
+#### 4. Auto-Mark as Read
+
+**Issue**: Decision flow step #7 says "Mark as read applies to certain categories"
+
+**Question**: Which categories should auto-mark as read? What are the rules?
+
+**Detailed Specifications Needed**:
+
+**Which Categories**:
+- `solicitation` only?
+- `solicitation` + `newsletter`?
+- `low_priority` + `solicitation` + `newsletter`?
+- User configurable per category?
+
+**Safety Constraints**:
+- Confidence threshold: Only mark if confidence >95%?
+- VIP exceptions: Never mark VIP senders as read?
+- Important exceptions: Never mark anything tagged as `important`?
+
+**User Control**:
+- Global enable/disable toggle?
+- Per-category configuration?
+- Preview mode: Show what will be marked before applying?
+
+**Recommendation for MVP**:
+- DO NOT auto-mark as read in MVP (too risky)
+- Show classification results only
+- Phase 2: Add optional auto-mark with strict safeguards (opt-in, high confidence only)
+
+---
+
+### B. Technical Specifications
+
+#### 5. Classification History Storage
+
+**Issue**: Decisions require learning from feedback, but no storage format defined
+
+**Question**: What database/storage format for classification history and user feedback?
+
+**Options**:
+- **JSON files** (simple, no dependencies, good for MVP)
+- **SQLite** (structured, queryable, lightweight)
+- **PostgreSQL** (overkill for MVP, better for production)
+- **Vector DB** (ChromaDB, Pinecone - for similarity search, Phase 3)
+
+**Data to Store**:
+```python
+{
+  "email_id": "AAMkAGI...",
+  "sender": "newsletter@example.com",
+  "sender_domain": "example.com",
+  "subject": "Weekly Newsletter #42",
+  "classification": {
+    "primary_category": "newsletter",
+    "secondary_categories": ["tech"],
+    "confidence": 0.87,
+    "method": "ai",
+    "ai_reasoning": "Regular newsletter format with unsubscribe link"
+  },
+  "user_feedback": {
+    "corrected_to": "solicitation",
+    "timestamp": "2025-11-05T10:30:00Z"
+  },
+  "timestamp": "2025-11-05T10:25:00Z"
+}
+```
+
+**Retention**:
+- How long to keep classification history?
+- Privacy: Store email content or just metadata?
+
+**Recommendation for MVP**:
+- SQLite for classification history (structured, easy to query)
+- JSON for user feedback log (simple append-only)
+- Vector DB deferred to Phase 3
+
+---
+
+#### 6. Thread Context - Implementation Details
+
+**Issue**: Decision #8 requires thread context consideration, but implementation unclear
+
+**Question**: How much thread context to fetch and analyze?
+
+**Graph API Considerations**:
+- Fetching full thread = multiple API calls per email
+- 100 emails could become 300+ API calls (performance impact)
+- Rate limiting concerns
+
+**Implementation Options**:
+
+**Option A - Minimal Metadata** (Recommended for MVP):
+```
+Fetch from email metadata:
+- conversationId (free, included in email object)
+- isRead status
+- hasAttachments
+- importance flag
+- user is in To/CC/BCC
+
+Derive signals:
+- User replied to thread = boost importance
+- Thread has >3 messages = likely conversation
+```
+
+**Option B - Thread Summary**:
+```
+Additional API call to get thread:
+- Participant count
+- Message count in thread
+- User participation (how many times user replied)
+
+Use signals to adjust classification:
+- User replied 2+ times = important
+- Only received, never replied = normal
+```
+
+**Option C - Full Thread Analysis**:
+```
+Fetch all messages in thread
+Analyze conversation flow
+Classify based on thread content
+
+Too expensive for MVP
+```
+
+**Thread Signals for Classification**:
+- User replied to email → boost importance score by +0.2
+- User is original sender → always important
+- Thread has >5 participants → likely work-related
+- Thread age >30 days with no user replies → decrease importance
+
+**Edge Cases**:
+- What if user replies to spam? (Don't auto-mark spam as important)
+- Should require 2+ signals before boosting importance
+
+**Recommendation for MVP**:
+- Use minimal metadata approach (Option A)
+- Add simple thread signals (user replied = boost importance)
+- Defer full thread analysis to Phase 2
+
+---
+
+#### 7. Multi-Category Behavior
+
+**Issue**: Decision #7 enables multi-category, but automation rules unclear
+
+**Question**: How to handle folder moves and actions with multi-category emails?
+
+**Scenarios**:
+```
+Email classified as:
+- Primary: important
+- Secondary: [finance, work]
+
+Actions to take:
+- Move to which folder? → Follow primary category
+- Mark as read? → Never (important)
+- Apply which rules? → Primary category rules only
+```
+
+**Hierarchy Definition**:
+```
+1. VIP sender rules (highest priority, always apply)
+2. Primary category (drives folder location, read status)
+3. Secondary categories (tags only, for filtering/search)
+4. Default behavior (fallback if no match)
+```
+
+**Recommendation**:
+- Primary category drives all automatic actions
+- Secondary categories are metadata/tags only
+- Document clear hierarchy in user guide
+
+---
+
+### C. Configuration & User Experience
+
+#### 8. Folder Naming Convention
+
+**Question**: If we implement auto-folder creation (Phase 2), what naming convention?
+
+**Options**:
+- `AI-Agent/{category}` (clear prefix, organized)
+- `AI/{category}` (shorter)
+- `📧 {category}` (emoji prefix, visual)
+- `{category}` (clean but could conflict)
+- User configurable template
+
+**Recommendation**:
+- Default: `AI-Agent/{category}`
+- Allow customization via config file
+- Check for conflicts before creating
+
+---
+
+#### 9. Per-Sender LLM Configuration
+
+**Issue**: VIP/Important Senders section mentions "LLM (primary and secondary)"
+
+**Question**: What's the use case for per-sender LLM configuration?
+
+**Possible Scenarios**:
+- Use GPT-4 for VIP senders, GPT-3.5-turbo for others? (cost optimization)
+- Use local LLM for privacy-sensitive senders?
+
+**Complexity Assessment**:
+- Adds significant configuration complexity
+- Marginal benefit for most users
+- Better to have global LLM config with quality tiers
+
+**Recommendation**:
+- Defer per-sender LLM to Phase 3
+- MVP: Single global LLM configuration
+- Phase 2: Consider LLM tiers (high/medium/low priority use different models)
+
+---
+
+### D. Performance & Scalability
+
+#### 10. Classification Latency with Thread Context
+
+**Question**: What's acceptable latency for thread-aware classification?
+
+**Benchmarks**:
+- Current (no thread): ~1-2 seconds per email
+- With thread metadata: ~1.5-2.5 seconds per email
+- With full thread analysis: ~3-5 seconds per email
+
+**Batch Processing**:
+- 100 emails with minimal thread context: ~2-3 minutes
+- 100 emails with full thread analysis: ~5-8 minutes
+
+**Target**: Keep under 3 minutes for 100 emails in MVP
+
+**Recommendation**:
+- Use minimal thread metadata (adds <0.5s per email)
+- Implement parallel processing for batch classification
+- Add progress indicators for user feedback
+
+---
+
+#### 11. Classification Cache TTL
+
+**Question**: Should classification results be cached indefinitely or have TTL?
+
+**Considerations**:
+- Sender behavior changes over time
+- Rules get updated
+- User preferences evolve
+
+**Options**:
+- No TTL (cache forever, invalidate on user correction)
+- 30-day TTL (re-classify monthly)
+- 90-day TTL (re-classify quarterly)
+- Configurable TTL
+
+**Recommendation for MVP**:
+- Cache sender-based classifications for 90 days
+- Invalidate immediately on user correction
+- Allow manual cache clearing
+
+---
+
+### E. MVP Feature Set Recommendation
+
+To keep MVP focused and achievable in Weeks 3-4:
+
+**✅ Include in MVP:**
+- 5 core categories (important, solicitation, newsletter, transactional, normal)
+- Hybrid approach (primary category + secondary tags)
+- VIP sender list (YAML config)
+- Basic rule-based classification (keyword matching, sender patterns)
+- OpenAI API integration (configurable model: GPT-3.5-turbo or GPT-4)
+- Structured AI prompts (Option C: JSON response with reasoning)
+- SQLite for classification history
+- JSON file for user feedback logging
+- Basic thread metadata (conversationId, user replied signal)
+- Classify-only mode (no auto-move, no auto-mark-read)
+- Confidence scoring and logging
+- Classification metadata tracking
+
+**⏸️ Defer to Phase 2:**
+- Ollama/local LLM support
+- Auto-rule generation from feedback
+- Category folder auto-creation
+- Auto-mark emails as read
+- Advanced thread analysis (full thread content)
+- Sender domain caching with TTL
+- Additional categories (finance, work, tech, personal)
+- Multi-tag UI/reporting
+
+**⏸️ Defer to Phase 3:**
+- Vector DB for similarity search
+- Per-sender LLM configuration
+- ML-based pattern recognition
+- Advanced rule synthesis
+- Classification analytics dashboard
+- A/B testing different prompts
+
+---
+
 ## Success Metrics
 
 ### Accuracy Targets
