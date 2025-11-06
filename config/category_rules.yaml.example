@@ -1,0 +1,335 @@
+# Category Rules Configuration
+# Copy this file to category_rules.yaml and customize for your needs
+
+# Each category has rules that contribute to classification confidence
+# Multiple rules can match - their confidence boosts are combined
+
+categories:
+  # ============================================
+  # SOLICITATION - Marketing & Promotional
+  # ============================================
+  solicitation:
+    # Minimum confidence needed to classify as solicitation
+    confidence_threshold: 0.8
+
+    rules:
+      # High-confidence marketing keywords
+      - rule_id: "sol_001"
+        name: "Aggressive marketing language"
+        enabled: true
+        priority: 10
+        confidence_boost: 0.4
+
+        keywords_subject:
+          - "limited time"
+          - "act now"
+          - "don't miss"
+          - "expires soon"
+          - "last chance"
+          - "final hours"
+          - "hurry"
+          - "flash sale"
+
+        keywords_body:
+          - "click here"
+          - "buy now"
+          - "shop now"
+          - "claim your"
+          - "exclusive offer"
+          - "special discount"
+
+      # Promotional pricing language
+      - rule_id: "sol_002"
+        name: "Promotional pricing"
+        enabled: true
+        priority: 9
+        confidence_boost: 0.3
+
+        keywords_subject:
+          - "50% off"
+          - "70% off"
+          - "free trial"
+          - "free shipping"
+          - "clearance"
+          - "sale"
+          - "discount"
+          - "save $"
+          - "save up to"
+
+      # Marketing sender patterns
+      - rule_id: "sol_003"
+        name: "Marketing sender domains"
+        enabled: true
+        priority: 8
+        confidence_boost: 0.4
+
+        sender_patterns:
+          - "*@marketing.*"
+          - "*@promo.*"
+          - "*@deals.*"
+          - "*@offers.*"
+          - "*@newsletter.*"
+          - "noreply@*"
+
+      # Unsubscribe link indicates marketing
+      - rule_id: "sol_004"
+        name: "Has unsubscribe link"
+        enabled: true
+        priority: 7
+        confidence_boost: 0.3
+
+        has_unsubscribe_link: true
+
+  # ============================================
+  # NEWSLETTER - Subscribed Content
+  # ============================================
+  newsletter:
+    confidence_threshold: 0.7
+
+    rules:
+      # Newsletter keywords
+      - rule_id: "news_001"
+        name: "Newsletter patterns"
+        enabled: true
+        priority: 9
+        confidence_boost: 0.4
+
+        keywords_subject:
+          - "newsletter"
+          - "weekly digest"
+          - "daily digest"
+          - "monthly update"
+          - "roundup"
+          - "this week in"
+          - "issue #"
+          - "edition"
+
+      # Newsletter platforms
+      - rule_id: "news_002"
+        name: "Newsletter platforms"
+        enabled: true
+        priority: 8
+        confidence_boost: 0.5
+
+        sender_patterns:
+          - "*@substack.com"
+          - "*@medium.com"
+          - "*@convertkit.com"
+          - "*@mailchimp.com"
+          - "*@beehiiv.com"
+
+      # Content update patterns
+      - rule_id: "news_003"
+        name: "Content updates"
+        enabled: true
+        priority: 7
+        confidence_boost: 0.3
+
+        keywords_subject:
+          - "new post"
+          - "latest articles"
+          - "recent updates"
+          - "what's new"
+
+        has_unsubscribe_link: true
+
+  # ============================================
+  # TRANSACTIONAL - Orders & Confirmations
+  # ============================================
+  transactional:
+    confidence_threshold: 0.75
+
+    rules:
+      # Order confirmations
+      - rule_id: "trans_001"
+        name: "Order confirmations"
+        enabled: true
+        priority: 10
+        confidence_boost: 0.5
+
+        keywords_subject:
+          - "order confirmation"
+          - "order #"
+          - "receipt"
+          - "invoice"
+          - "payment received"
+          - "purchase confirmation"
+          - "thank you for your order"
+
+        keywords_body:
+          - "order number"
+          - "order total"
+          - "items ordered"
+
+      # Shipping notifications
+      - rule_id: "trans_002"
+        name: "Shipping notifications"
+        enabled: true
+        priority: 9
+        confidence_boost: 0.5
+
+        keywords_subject:
+          - "shipped"
+          - "out for delivery"
+          - "delivery confirmation"
+          - "tracking number"
+          - "package delivered"
+
+        keywords_body:
+          - "tracking number"
+          - "carrier"
+          - "expected delivery"
+
+      # Payment and billing
+      - rule_id: "trans_003"
+        name: "Payment notifications"
+        enabled: true
+        priority: 9
+        confidence_boost: 0.4
+
+        keywords_subject:
+          - "payment confirmation"
+          - "invoice"
+          - "statement"
+          - "billing"
+          - "subscription renewal"
+
+      # Automated system emails
+      - rule_id: "trans_004"
+        name: "Automated notifications"
+        enabled: true
+        priority: 7
+        confidence_boost: 0.3
+
+        sender_patterns:
+          - "noreply@*"
+          - "no-reply@*"
+          - "notifications@*"
+          - "donotreply@*"
+          - "auto-confirm@*"
+
+  # ============================================
+  # IMPORTANT - Urgent & Critical
+  # ============================================
+  important:
+    confidence_threshold: 0.7
+
+    rules:
+      # Urgent keywords
+      - rule_id: "imp_001"
+        name: "Urgent language"
+        enabled: true
+        priority: 10
+        confidence_boost: 0.4
+
+        keywords_subject:
+          - "urgent"
+          - "action required"
+          - "immediate attention"
+          - "deadline"
+          - "asap"
+          - "critical"
+          - "time sensitive"
+          - "important:"
+
+      # Deadline mentions
+      - rule_id: "imp_002"
+        name: "Deadline mentions"
+        enabled: true
+        priority: 9
+        confidence_boost: 0.3
+
+        keywords_subject:
+          - "due by"
+          - "due today"
+          - "due tomorrow"
+          - "expires"
+          - "by end of day"
+          - "by friday"
+
+        keywords_body:
+          - "deadline"
+          - "due date"
+          - "must complete"
+
+      # High importance flag
+      - rule_id: "imp_003"
+        name: "High importance flag"
+        enabled: true
+        priority: 8
+        confidence_boost: 0.3
+
+        # This would check the email's importance metadata
+        # Implementation would check email.importance == "high"
+
+  # ============================================
+  # PERSONAL - Friends & Family
+  # ============================================
+  # Note: Personal emails are harder to detect with rules
+  # AI classification handles these better
+  # These rules catch obvious patterns
+
+  personal:
+    confidence_threshold: 0.6
+
+    rules:
+      # Common personal email domains
+      - rule_id: "pers_001"
+        name: "Personal email domains"
+        enabled: true
+        priority: 5
+        confidence_boost: 0.3
+
+        sender_patterns:
+          - "*@gmail.com"
+          - "*@yahoo.com"
+          - "*@hotmail.com"
+          - "*@outlook.com"
+          - "*@icloud.com"
+
+      # Personal conversation patterns
+      - rule_id: "pers_002"
+        name: "Personal conversation starters"
+        enabled: true
+        priority: 4
+        confidence_boost: 0.2
+
+        keywords_subject:
+          - "re:"
+          - "fwd:"
+          - "hey"
+          - "hi"
+          - "hello"
+
+# ============================================
+# Configuration Notes
+# ============================================
+#
+# Rule Structure:
+#   rule_id: Unique identifier for the rule
+#   name: Human-readable description
+#   enabled: Set to false to disable without deleting
+#   priority: Higher priority rules checked first (0-10)
+#   confidence_boost: How much this rule increases confidence (0.0-1.0)
+#
+# Matching Criteria:
+#   keywords_subject: List of keywords to match in subject line
+#   keywords_body: List of keywords to match in email body
+#   sender_patterns: Email/domain patterns (* wildcard supported)
+#   has_unsubscribe_link: Boolean check for unsubscribe link
+#   has_attachments: Boolean check for attachments
+#   attachment_types: List of file extensions (e.g., ["pdf", "docx"])
+#
+# Confidence Calculation:
+#   - Multiple matching rules have their confidence_boost values combined
+#   - Total confidence capped at 1.0
+#   - If total >= confidence_threshold, category is assigned
+#
+# Tips:
+#   - Start with provided rules and customize gradually
+#   - Higher priority (8-10) for most reliable rules
+#   - Lower priority (1-5) for weaker signals
+#   - Confidence boost 0.4-0.5 for strong indicators
+#   - Confidence boost 0.2-0.3 for moderate indicators
+#   - Test rules with real emails and adjust thresholds
+#   - Disable rules that cause false positives rather than deleting

@@ -1,0 +1,122 @@
+# VIP Senders Configuration
+# Copy this file to vip_senders.yaml and customize for your needs
+
+# Priority levels:
+# - vip: Highest priority, always important, never auto-delete
+# - trusted: Generally important, high priority
+# - monitored: Watch for patterns, normal priority
+
+vip_senders:
+  # ============================================
+  # VIP Senders - Highest Priority
+  # ============================================
+  # These senders will always be classified as "important"
+  # Emails will never be auto-deleted or auto-marked as read
+
+  # Example: Your direct manager
+  - identifier: "boss@company.com"
+    type: email
+    priority: vip
+    custom_category: important
+    notes: "Direct manager - all emails important"
+
+  # Example: Major client domain
+  - identifier: "bigclient.com"
+    type: domain
+    priority: vip
+    custom_category: important
+    notes: "Major client - all communications important"
+
+  # Example: Family members
+  - identifier: "john.smith@gmail.com"
+    type: email
+    priority: vip
+    custom_category: important
+    notes: "Family"
+
+  # ============================================
+  # Trusted Senders - High Priority
+  # ============================================
+  # Generally important but not critical
+
+  # Example: Colleagues from your company
+  - identifier: "yourcompany.com"
+    type: domain
+    priority: trusted
+    notes: "Internal company emails"
+
+  # Example: Business partner
+  - identifier: "*@partner-company.com"
+    type: pattern
+    priority: trusted
+    notes: "Business partner - usually important"
+
+  # Example: Key team members
+  - identifier: "teammate@company.com"
+    type: email
+    priority: trusted
+    notes: "Project team member"
+
+  # ============================================
+  # Monitored Senders - Watch for Patterns
+  # ============================================
+  # Track these senders for potential pattern learning
+
+  # Example: Recruiter (might have opportunities)
+  - identifier: "recruiter@headhunter.com"
+    type: email
+    priority: monitored
+    notes: "Career opportunities - monitor but not critical"
+
+  # Example: Newsletter you sometimes read
+  - identifier: "newsletter@techblog.com"
+    type: email
+    priority: monitored
+    notes: "Tech newsletter - read occasionally"
+
+# ============================================
+# Blocked Senders
+# ============================================
+# These senders will automatically be classified as "solicitation"
+# with high confidence
+
+blocked_senders:
+  # Example: Known spam sender
+  - identifier: "spam@example.com"
+    type: email
+    notes: "Known spammer"
+
+  # Example: Spam domain
+  - identifier: "marketing-spam.com"
+    type: domain
+    notes: "Spam domain - block all"
+
+  # Example: Pattern match for promotional emails
+  - identifier: "*@promo.*"
+    type: pattern
+    notes: "Block all promo subdomains"
+
+# ============================================
+# Usage Notes
+# ============================================
+#
+# identifier_type options:
+#   - email: Exact email address match (e.g., "user@domain.com")
+#   - domain: Match entire domain (e.g., "company.com" matches anyone@company.com)
+#   - pattern: Wildcard pattern (e.g., "*@*.partner.com")
+#
+# priority options:
+#   - vip: Always important, never auto-delete
+#   - trusted: Generally important
+#   - monitored: Track for learning
+#
+# custom_category (optional):
+#   - Override automatic classification with specific category
+#   - Options: important, solicitation, newsletter, transactional, normal
+#
+# Tips:
+#   - Start with a small list of VIPs (5-10 people)
+#   - Add blocked senders as you encounter spam
+#   - Use domain matching for organizations (e.g., your company)
+#   - Use email matching for individuals
+#   - Use pattern matching sparingly (can have unexpected matches)

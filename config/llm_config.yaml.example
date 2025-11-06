@@ -1,0 +1,142 @@
+# LLM Configuration for Email Classification
+# Copy this file to llm_config.yaml and customize
+
+# ============================================
+# Choose Your LLM Provider
+# ============================================
+# Uncomment ONE of the configurations below
+
+# ----------------------------------------
+# Option 1: OpenAI (Cloud)
+# ----------------------------------------
+llm:
+  provider: "openai"
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4"                      # or "gpt-3.5-turbo" for lower cost
+  api_key_env: "OPENAI_API_KEY"       # Environment variable name
+
+  # Request parameters
+  temperature: 0.3                    # 0.0-1.0 (lower = more deterministic)
+  max_tokens: 500                     # Max response length
+  timeout_seconds: 30                 # API timeout
+
+  # Retry configuration
+  max_retries: 3
+  retry_delay_seconds: 1
+
+# ----------------------------------------
+# Option 2: Ollama (Local)
+# ----------------------------------------
+# Uncomment this section to use Ollama instead
+#
+# llm:
+#   provider: "ollama"
+#   base_url: "http://localhost:11434/v1"
+#   model: "llama3.1"                 # or mistral, phi, etc.
+#   # api_key_env not needed for local Ollama
+#
+#   temperature: 0.3
+#   max_tokens: 500
+#   timeout_seconds: 60               # Local might need more time
+#
+#   max_retries: 2
+#   retry_delay_seconds: 2
+
+# ----------------------------------------
+# Option 3: Azure OpenAI
+# ----------------------------------------
+# Uncomment this section to use Azure OpenAI
+#
+# llm:
+#   provider: "azure-openai"
+#   base_url: "https://YOUR-RESOURCE.openai.azure.com/openai/deployments/YOUR-DEPLOYMENT"
+#   api_version: "2024-02-01"
+#   model: "gpt-4"
+#   api_key_env: "AZURE_OPENAI_KEY"
+#
+#   temperature: 0.3
+#   max_tokens: 500
+#   timeout_seconds: 30
+#
+#   max_retries: 3
+#   retry_delay_seconds: 1
+
+# ============================================
+# Cost Tracking & Limits
+# ============================================
+cost_limits:
+  enabled: true
+  daily_max_usd: 5.0                  # Maximum spend per day
+  monthly_max_usd: 50.0               # Maximum spend per month
+  warn_at_percent: 80                 # Warn when reaching X% of limit
+
+  # Token usage tracking
+  log_token_usage: true
+  token_usage_log: "data/logs/token_usage.log"
+
+# ============================================
+# Performance & Optimization
+# ============================================
+optimization:
+  # Cache AI responses by sender domain to reduce costs
+  cache_ai_classifications: true
+  cache_ttl_days: 90
+
+  # Batch processing (Phase 2)
+  # batch_classification: false
+  # batch_size: 10
+
+  # Use cheaper model for low-priority emails (Phase 2)
+  # tiered_models:
+  #   high_priority: "gpt-4"
+  #   normal: "gpt-3.5-turbo"
+
+# ============================================
+# Prompt Configuration
+# ============================================
+prompts:
+  # Include few-shot examples in prompts
+  use_few_shot_examples: true
+  num_examples_per_category: 2
+
+  # Include thread context in prompts
+  include_thread_context: true
+
+  # Maximum email body length to send to AI
+  max_body_preview_chars: 500
+
+# ============================================
+# Provider-Specific Notes
+# ============================================
+#
+# OpenAI:
+#   - Fast, high quality, cloud-based
+#   - Requires API key and internet
+#   - Cost: ~$0.03/1K tokens (GPT-4), ~$0.001/1K tokens (GPT-3.5-turbo)
+#   - Get API key: https://platform.openai.com/api-keys
+#
+# Ollama:
+#   - Free, runs locally, privacy-friendly
+#   - Requires Ollama installed: https://ollama.ai
+#   - No API key needed
+#   - Install models: ollama pull llama3.1
+#   - Start server: ollama serve
+#   - Quality may be lower than GPT-4
+#
+# Azure OpenAI:
+#   - Enterprise-grade, Microsoft cloud
+#   - Requires Azure subscription
+#   - Same models as OpenAI
+#   - Setup: https://azure.microsoft.com/en-us/products/ai-services/openai-service
+#
+# Recommended Models:
+#   - Best quality: gpt-4 (OpenAI/Azure)
+#   - Best value: gpt-3.5-turbo (OpenAI/Azure)
+#   - Best privacy: llama3.1 (Ollama local)
+#   - Fastest: gpt-3.5-turbo (OpenAI)
+#
+# Environment Variables:
+#   Create a .env file with:
+#   OPENAI_API_KEY=sk-your-key-here
+#   # or
+#   AZURE_OPENAI_KEY=your-azure-key-here

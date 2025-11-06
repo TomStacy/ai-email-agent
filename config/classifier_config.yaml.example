@@ -1,0 +1,229 @@
+# Email Classifier Configuration
+# Copy this file to classifier_config.yaml and customize
+
+# ============================================
+# General Classifier Settings
+# ============================================
+classifier:
+  enabled: true                       # Master on/off switch
+
+  # Classification mode
+  mode: "hybrid"                      # Options: "rules-only", "ai-only", "hybrid"
+  # - rules-only: Fast, free, less accurate
+  # - ai-only: Slower, costs money, more accurate
+  # - hybrid: Best of both (recommended)
+
+  # Default category for uncertain emails
+  default_category: "normal"
+
+  # Enabled categories (remove any you don't want)
+  enabled_categories:
+    - important
+    - solicitation
+    - newsletter
+    - transactional
+    - normal
+
+# ============================================
+# Confidence Thresholds
+# ============================================
+confidence:
+  # When to skip AI and trust rules alone
+  high_confidence_threshold: 0.9      # If rule confidence >= 0.9, don't call AI
+
+  # When to use AI to help rules
+  low_confidence_threshold: 0.5       # If rule confidence < 0.5, always call AI
+
+  # Between 0.5-0.9: Use AI to enhance classification
+
+# ============================================
+# Classification Behavior
+# ============================================
+behavior:
+  # Primary category is required
+  require_primary_category: true
+
+  # Maximum number of secondary categories (tags)
+  max_secondary_categories: 3
+
+  # Allow AI to override VIP sender classification
+  # (Set false to never override VIP list)
+  allow_vip_override: false
+
+# ============================================
+# Thread Awareness
+# ============================================
+thread_signals:
+  enabled: true
+
+  # Boost importance if user replied to thread
+  user_reply_boost: 0.2               # Add 0.2 to confidence
+
+  # Boost importance if user started thread
+  user_initiated_boost: 0.3           # Add 0.3 to confidence
+
+  # Minimum confidence before applying thread boosts
+  min_confidence_for_boost: 0.4
+
+# ============================================
+# Caching Configuration
+# ============================================
+cache:
+  enabled: true
+
+  # Cache classifications by sender domain
+  cache_by_domain: true
+  domain_cache_ttl_days: 90
+
+  # Cache classifications by exact email
+  cache_by_email: true
+  email_cache_ttl_days: 90
+
+  # Clear cache on user feedback
+  invalidate_on_feedback: true
+
+  # Auto-cleanup expired cache entries
+  auto_cleanup_enabled: true
+  cleanup_interval_hours: 24
+
+# ============================================
+# Performance Settings
+# ============================================
+performance:
+  # Number of emails to classify in one batch
+  batch_size: 50
+
+  # Enable parallel processing (Phase 2)
+  parallel_processing: false
+  # max_workers: 4
+
+  # Maximum time to spend classifying (seconds)
+  max_processing_time_seconds: 300    # 5 minutes
+
+  # Timeout per email classification (seconds)
+  per_email_timeout_seconds: 10
+
+# ============================================
+# Actions (MVP: all disabled)
+# ============================================
+actions:
+  # Auto-move emails to category folders (Phase 2)
+  auto_move_enabled: false
+  # folder_prefix: "AI-Agent"
+
+  # Auto-mark certain categories as read (Phase 2)
+  auto_mark_read_enabled: false
+  # auto_mark_categories:
+  #   - solicitation
+
+  # Dry run mode - classify but don't take actions
+  dry_run: true                       # KEEP TRUE for MVP safety
+
+# ============================================
+# Logging Configuration
+# ============================================
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+
+  # What to log
+  log_classifications: true           # Log each classification result
+  log_ai_reasoning: true              # Log AI explanations
+  log_rule_matches: true              # Log which rules matched
+  log_cache_hits: true                # Log cache usage
+  log_performance: true               # Log processing times
+
+  # Log file location
+  log_file: "data/logs/classifier.log"
+
+  # Rotate logs
+  log_rotation_enabled: true
+  max_log_size_mb: 10
+  max_log_files: 5
+
+# ============================================
+# Database Configuration
+# ============================================
+database:
+  # SQLite database location
+  db_path: "data/classifications.db"
+
+  # Auto-create tables on startup
+  auto_initialize: true
+
+  # Database maintenance
+  vacuum_on_startup: false            # Clean/optimize database
+  vacuum_interval_days: 30
+
+  # Retention policy
+  delete_old_classifications: false   # Keep all for now
+  # retention_days: 365
+
+# ============================================
+# User Feedback
+# ============================================
+feedback:
+  enabled: true
+
+  # Automatically learn from feedback (Phase 2)
+  auto_learn: false
+
+  # Minimum feedback count before learning
+  # min_feedback_count: 5
+
+  # Feedback log location
+  feedback_log: "data/logs/user_feedback.log"
+
+# ============================================
+# Development & Testing
+# ============================================
+development:
+  # Enable debug mode
+  debug_mode: false
+
+  # Save raw AI responses for inspection
+  save_ai_responses: false
+  # ai_responses_dir: "data/debug/ai_responses"
+
+  # Test mode - use sample emails
+  test_mode: false
+
+  # Verbose output
+  verbose: false
+
+# ============================================
+# Usage Scenarios
+# ============================================
+#
+# MINIMAL SETUP (Just get started):
+#   - Set mode: "hybrid"
+#   - Configure LLM in llm_config.yaml
+#   - Add 5-10 VIP senders in vip_senders.yaml
+#   - Keep dry_run: true
+#   - Start classifying!
+#
+# PRIVACY-FOCUSED (No cloud AI):
+#   - Set mode: "rules-only" or use Ollama
+#   - Customize category_rules.yaml extensively
+#   - May need more VIP senders configured
+#   - Lower accuracy but completely private
+#
+# COST-CONSCIOUS (Minimize AI calls):
+#   - Set high_confidence_threshold: 0.8 (higher = fewer AI calls)
+#   - Enable caching: cache_by_domain: true
+#   - Extensive rules in category_rules.yaml
+#   - Use gpt-3.5-turbo instead of gpt-4
+#
+# ACCURACY-FOCUSED (Best classification):
+#   - Set mode: "hybrid"
+#   - Set low_confidence_threshold: 0.7 (lower = more AI calls)
+#   - Use gpt-4 model
+#   - Enable thread_signals
+#   - Review and correct classifications regularly
+#
+# PRODUCTION (After testing):
+#   - Set dry_run: false
+#   - Enable auto_move or auto_mark_read (carefully!)
+#   - Set appropriate cost_limits
+#   - Enable log rotation
+#   - Monitor performance and accuracy
