@@ -641,10 +641,34 @@ Now classify this email: [actual email]
 
 ## Implementation Questions
 
-**Status**: Pending Review
-**Purpose**: Clarifications needed before implementation begins
+**Status**: ✅ Completed - All questions answered
+**Purpose**: Implementation details clarified for MVP development
 
-The decisions above provide strategic direction, but several implementation details need clarification to ensure a successful MVP.
+The decisions above provide strategic direction. All 11 implementation questions have been answered to ensure a focused MVP.
+
+### Decision Summary
+
+**MVP Scope (Phase 1 - Weeks 3-4):**
+- ✅ OpenAI API-compatible LLM support (OpenAI, Ollama, Azure OpenAI)
+- ✅ SQLite database for classification history
+- ✅ Classify-only mode (no auto-move, no auto-mark-read)
+- ✅ Basic thread metadata (minimal API calls)
+- ✅ 90-day cache TTL
+- ✅ User feedback capture
+
+**Deferred to Phase 2:**
+- ⏸️ Auto-rule generation from feedback
+- ⏸️ Category folder auto-creation
+- ⏸️ Auto-mark emails as read
+- ⏸️ Advanced thread analysis
+- ⏸️ Performance optimizations
+
+**Deferred to Phase 3:**
+- ⏸️ Per-sender LLM configuration
+- ⏸️ Vector DB for similarity search
+- ⏸️ ML-based pattern recognition
+
+---
 
 ### A. MVP Scope Clarification
 
@@ -848,6 +872,8 @@ Option C - Configurable root:
 
 **Question**: How much thread context to fetch and analyze?
 
+**Answer**: Defer detailed thread analysis to Phase 2. For MVP, use minimal metadata only (Option A).
+
 **Graph API Considerations**:
 - Fetching full thread = multiple API calls per email
 - 100 emails could become 300+ API calls (performance impact)
@@ -913,6 +939,8 @@ Too expensive for MVP
 
 **Question**: How to handle folder moves and actions with multi-category emails?
 
+**Answer**: Defer automation behavior to Phase 2. For MVP, classify with primary + secondary tags, but don't auto-move emails.
+
 **Scenarios**:
 ```
 Email classified as:
@@ -946,6 +974,8 @@ Actions to take:
 
 **Question**: If we implement auto-folder creation (Phase 2), what naming convention?
 
+**Answer**: Defer to Phase 2 when folder auto-creation is implemented.
+
 **Options**:
 - `AI-Agent/{category}` (clear prefix, organized)
 - `AI/{category}` (shorter)
@@ -965,6 +995,8 @@ Actions to take:
 **Issue**: VIP/Important Senders section mentions "LLM (primary and secondary)"
 
 **Question**: What's the use case for per-sender LLM configuration?
+
+**Answer**: Defer to Phase 3. Use single global LLM configuration for MVP.
 
 **Possible Scenarios**:
 - Use GPT-4 for VIP senders, GPT-3.5-turbo for others? (cost optimization)
@@ -988,6 +1020,8 @@ Actions to take:
 
 **Question**: What's acceptable latency for thread-aware classification?
 
+**Answer**: Target <3 minutes for 100 emails. Defer performance optimization to Phase 2.
+
 **Benchmarks**:
 - Current (no thread): ~1-2 seconds per email
 - With thread metadata: ~1.5-2.5 seconds per email
@@ -1009,6 +1043,8 @@ Actions to take:
 #### 11. Classification Cache TTL
 
 **Question**: Should classification results be cached indefinitely or have TTL?
+
+**Answer**: Use 90-day TTL for MVP. Defer advanced caching strategies to Phase 2.
 
 **Considerations**:
 - Sender behavior changes over time
@@ -1032,29 +1068,31 @@ Actions to take:
 
 To keep MVP focused and achievable in Weeks 3-4:
 
-**✅ Include in MVP:**
+**✅ Include in MVP (Phase 1 - Weeks 3-4):**
 - 5 core categories (important, solicitation, newsletter, transactional, normal)
 - Hybrid approach (primary category + secondary tags)
 - VIP sender list (YAML config)
 - Basic rule-based classification (keyword matching, sender patterns)
-- Any OPENAI API compatable LLM should be available via configuration of a URL and model name
+- **OpenAI API-compatible LLM support** (configurable URL + model: OpenAI, Ollama, Azure OpenAI, etc.)
 - Structured AI prompts (Option C: JSON response with reasoning)
-- SQLite for classification history
-- JSON file for user feedback logging
-- Basic thread metadata (conversationId, user replied signal)
-- Classify-only mode (no auto-move, no auto-mark-read)
-- Confidence scoring and logging
+- **SQLite database** for classification history and user feedback
+- Basic thread metadata (conversationId, user participation signals)
+- **Classify-only mode** (emails classified in place, no auto-move, no auto-mark-read)
+- Confidence scoring and detailed logging
 - Classification metadata tracking
+- **90-day cache TTL** with manual cache clearing
+- User feedback capture (corrections logged to SQLite)
 
 **⏸️ Defer to Phase 2:**
-- Ollama/local LLM support
-- Auto-rule generation from feedback
-- Category folder auto-creation
-- Auto-mark emails as read
-- Advanced thread analysis (full thread content)
-- Sender domain caching with TTL
-- Additional categories (finance, work, tech, personal)
-- Multi-tag UI/reporting
+- **Auto-rule generation** from user feedback patterns
+- **Category folder auto-creation** and email auto-move
+- **Auto-mark emails as read** functionality
+- Advanced thread analysis (fetch full thread content, analyze conversation flow)
+- Advanced caching strategies (sender domain patterns, dynamic TTL)
+- Additional categories (finance, work, tech, personal - expand from 5 to 10)
+- Multi-category automation rules
+- Folder naming customization
+- Performance optimization (parallel processing, batch optimizations)
 
 **⏸️ Defer to Phase 3:**
 - Vector DB for similarity search
